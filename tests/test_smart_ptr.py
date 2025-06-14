@@ -350,3 +350,8 @@ def test_move_only_holder_caster_shared_ptr_with_smart_holder_support_enabled():
     assert (
         m.return_std_unique_ptr_example_drvd() == "move_only_holder_caster_traits_test"
     )
+
+
+def test_const_only_holder():
+    o = m.MyObject6("my_data")
+    assert o.value == "my_data"

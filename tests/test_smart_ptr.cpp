@@ -69,6 +69,20 @@ public:
     T **operator&() { throw std::logic_error("Call of overloaded operator& is not expected"); }
 };
 
+// Simple custom holder that imitates smart pointer, that always stores cpointer to const
+template <class T>
+class const_only_shared_ptr {
+    std::shared_ptr<const T> ptr_;
+
+public:
+    const_only_shared_ptr() = default;
+    explicit const_only_shared_ptr(const T *ptr) : ptr_(ptr) {}
+    const T *get() const { return ptr_.get(); }
+
+private:
+    // for demonstration purpose only, this imitates smart pointer with a const-only pointer
+};
+
 // Custom object with builtin reference counting (see 'object.h' for the implementation)
 class MyObject1 : public Object {
 public:
@@ -179,6 +193,20 @@ public:
     int value;
 };
 
+// test const_only_shared_ptr
+class MyObject6 {
+public:
+    static const_only_shared_ptr<MyObject6> createObject(std::string value) {
+        return const_only_shared_ptr<MyObject6>(new MyObject6(std::move(value)));
+    }
+
+    const std::string &value() const { return value_; }
+
+private:
+    explicit MyObject6(std::string &&value) : value_{std::move(value)} {}
+    std::string value_;
+};
+
 // test_shared_ptr_and_references
 struct SharedPtrRef {
     struct A {
@@ -283,6 +311,7 @@ struct holder_helper<ref<T>> {
 
 // Make pybind aware of the ref-counted wrapper type (s):
 PYBIND11_DECLARE_HOLDER_TYPE(T, ref<T>, true)
+PYBIND11_DECLARE_HOLDER_TYPE(T, const_only_shared_ptr<T>, true)
 // The following is not required anymore for std::shared_ptr, but it should compile without error:
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>)
 PYBIND11_DECLARE_HOLDER_TYPE(T, huge_unique_ptr<T>)
@@ -438,6 +467,10 @@ TEST_SUBMODULE(smart_ptr, m) {
     py::class_<MyObject5, huge_unique_ptr<MyObject5>>(m, "MyObject5")
         .def(py::init<int>())
         .def_readwrite("value", &MyObject5::value);
+
+    py::class_<MyObject6, const_only_shared_ptr<MyObject6>>(m, "MyObject6")
+        .def(py::init([](const std::string &value) { return MyObject6::createObject(value); }))
+        .def_property_readonly("value", &MyObject6::value);
 
     // test_shared_ptr_and_references
     using A = SharedPtrRef::A;
